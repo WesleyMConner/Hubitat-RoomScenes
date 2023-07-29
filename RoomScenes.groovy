@@ -20,6 +20,33 @@ preferences {
   page(name: "monoPage", title: "", install: true, uninstall: true)
 }
 
+void addModeIdToRoomScene () {
+  // Abstract
+  //   Ask client to select a scene for each current Hub mode and persist
+  //   the results as "state.modeIdToSceneName" (a Map<String, String>).
+  //
+  // Design Notes
+  //   - The mapping facilitates state.currentScene == 'AUTO'
+  //   - Refresh the mapping if/when site modes are changed.
+  Map<String, String> modeIdToRoomScene
+  ArrayList<LinkedHashMap> modes = location.modes
+  modes.each{mode ->
+    Boolean modeNameIsSceneName = state.scenes.find{it == mode.name} ? true : false
+    input(
+      name: "${mode.id}ToScene",
+      type: 'enum',
+      title: "Scene for ${mode.name}",
+      width: 2,
+      submitOnChange: true,
+      required: true,
+      multiple: false,
+      options: state.scenes,
+      defaultValue: modeNameIsSceneName ? mode.name : ''
+    )
+  }
+}
+
+
 Map monoPage() {
   return dynamicPage(
     name: "monoPage",
@@ -28,19 +55,22 @@ Map monoPage() {
     uninstall: true
   ) {
     section {
-      paragraph heading('Room Scenes')
+      //--paragraph hubPropertiesAsHtml()
+      paragraph heading('Room Scenes') \
+        + important('<br/>Tab to register field changes !!!')
       paragraph emphasis('Step 1: Identify the Hubitat Room this instance controls.')
       addRoomObjToSettings()
       if (state.roomObj) {
-        paragraph emphasis('Step 2: Identify <b>at least</b> two Room Scenes.')
-        paragraph bullet('<b>Step 2a:</b> (Optional) Use Hubitat Modes to name Room Scenes.')
-//        state.roomObj = rooms.find{it.id.toString() == settings.roomId}
+        paragraph emphasis("Step 2: Identify Room Scenes for ${state.roomObj.name}.")
+        paragraph bullet('<b>Step 2a (Optional):</b> Use Hubitat Modes to name Room Scenes.')
+        //].join('')}"""
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // !!! UNKNOWN IMPORT FOR ModeWrapper or ModeWrapperList !!!
         // !!!   Mode appears to have mode.id, mode.name, ...    !!!
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         ArrayList<LinkedHashMap> modes = location.modes
-        List<String> locationNamePicklist = location.modes.collect{it.name}
+        state.modes = modes
+        List<String> locationNamePicklist = state.modes.collect{it.name}
         input(
           name: 'modesAsScenes',
           type: 'enum',
@@ -50,7 +80,7 @@ Map monoPage() {
           multiple: true,
           options: locationNamePicklist
         )
-        paragraph bullet('Step <b>2b:</b> (Optional) Create Custom Room Scene Name.')
+        paragraph bullet('<b>Step 2b (Optional):</b> Create Custom Room Scene Name.')
         for (int i = 1; i<9; i++) {
           input(
             name: "cust${i}",
@@ -69,20 +99,14 @@ Map monoPage() {
            settings.cust4, settings.cust5, settings.cust6,
            settings.cust7, settings.cust8].findAll{it && it != 'n/a'}
       ).sort{}
-      paragraph bullet("<b>${scenes.size()} Scenes:</b> ${scenes.join(', ')}")
-      if (scenes.size() >= 2) {
-        paragraph emphasis('Proceed to Step 3?')
-        input(
-          name: 'proceedToDeviceSelection',
-          type: 'bool',
-          title: comment('Toggle to proceed.'),
-          submitOnChange: true,
-          required: true,
-          defaultValue: false
-        )
-      }
-      if (settings.proceedToDeviceSelection) {
+      paragraph bullet("<b>Scenes:</b> ${scenes.join(', ') ?: '...none...'}")
+      if (scenes.size() < 2) {
+        paragraph comment('At least two Room Scenes must be defined in order to proceed.')
+
+      } else {
         state.scenes = scenes
+        paragraph emphasis('Step 3: For AUTO: Map Hub modes to Room Scenes.')
+        addModeIdToRoomScene()
         ////
         //// EXIT
         ////
