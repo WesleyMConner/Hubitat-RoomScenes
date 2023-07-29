@@ -71,6 +71,7 @@ void addModeIdToSceneToSettings (String heading) {
   paragraph(heading)
   Map<String, String> modeIdToRoomScene
   ArrayList<LinkedHashMap> modes = location.modes
+  Map<String, String> modeIdToScene = [:]
   modes.each{mode ->
     Boolean modeNameIsSceneName = state.scenes.find{it == mode.name} ? true : false
     input(
@@ -84,7 +85,11 @@ void addModeIdToSceneToSettings (String heading) {
       options: state.scenes,
       defaultValue: modeNameIsSceneName ? mode.name : ''
     )
+    modeIdToScene[mode.id] = settings["${mode.id}ToScene"]
   }
+  // Only promote mappings to state if there are zero remaining nulls.
+  Map<String, String> nullMappings = modeIdToScene.findAll{it.value == null}
+  state.modeIdToScene = nullMappings.size() == 0 ? modeIdToScene : [:]
 }
 
 Map monoPage() {
@@ -95,7 +100,6 @@ Map monoPage() {
     uninstall: true
   ) {
     section {
-      //--paragraph hubPropertiesAsHtml()
       paragraph heading('Room Scenes') \
         + important('<br/>Tab to register field changes !!!')
       addRoomObjToSettings(
@@ -113,18 +117,22 @@ Map monoPage() {
         addModeIdToSceneToSettings(
           emphasis('Step 3: Map Hub modes to Room Scenes for automation.')
         )
-        ////
-        //// EXIT
-        ////
-        input(
-          name: 'exit',
-          type: 'bool',
-          title: comment('Exit?'),
-          submitOnChange: true,
-          required: true,
-          defaultValue: false
-        )
       }
+      if (state.modeIdToScene) {
+        paragraph "state.modeIdToScene: ${state.modeIdToScene}"
+        // READY TO IDENTIFY DEVICES
+      }
+      ////
+      //// EXIT
+      ////
+      input(
+        name: 'exit',
+        type: 'bool',
+        title: comment('Exit?'),
+        submitOnChange: true,
+        required: true,
+        defaultValue: false
+      )
     }
   }
 }
@@ -165,22 +173,6 @@ void deviceSceneInputs(DeviceWrapper d, List<String> scenes) {
 
 /*
       paragraph "settings keys are >${settings.keySet()}<"
-      input (
-        name: 'devices',
-        type: 'capability.switch',
-        title: 'Select Non-Lutron Switches',
-        submitOnChange: true,
-        required: true,
-        multiple: true
-      )
-      input (
-        name: 'repeaters',
-        type: 'device.LutronKeypad',
-        title: 'Select Lutron Main Repeaters',
-        submitOnChange: true,
-        required: true,
-        multiple: true
-      )
       if (settings.devices && settings.repeaters) {
         // Leverag types for coding.
         List<String> scenes = ['alpha', 'beta', 'gamma']
