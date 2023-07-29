@@ -20,31 +20,6 @@ preferences {
   page(name: "monoPage", title: "", install: true, uninstall: true)
 }
 
-void addRoomObjToSettings() {
-  // Abstract
-  //   Ask client to select a single room and save the whole room
-  //   object as "state.roomObj".
-  // Design Notes
-  //    There may not be an import for defining a RoomWrapper or a
-  //    RoomWrapperList.
-  ArrayList<LinkedHashMap> rooms = app.getRooms()
-  List<Map<String, String>> roomPicklist = rooms
-    .sort{ it.name }
-    .collect{ [(it.id.toString()): it.name] }
-  input(
-    name: 'roomId',
-    type: 'enum',
-    title: 'Select the Room',
-    submitOnChange: true,
-    required: true,
-    multiple: false,
-    options: roomPicklist
-  )
-  if (settings.roomId) {
-    state.roomObj = rooms.find{it.id.toString() == settings.roomId}
-  }
-}
-
 Map monoPage() {
   return dynamicPage(
     name: "monoPage",
