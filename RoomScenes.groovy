@@ -20,10 +20,50 @@ preferences {
   page(name: "monoPage", title: "", install: true, uninstall: true)
 }
 
-void addModeIdToRoomScene () {
+void addScenesToSettings (String heading) {
+  paragraph heading \
+    + '<b>Use Hubitat Modes to name Room Scenes</b> <em>..Optional</em>'
+  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  // !!! UNKNOWN IMPORT FOR ModeWrapper or ModeWrapperList !!!
+  // !!!   Mode appears to have mode.id, mode.name, ...    !!!
+  // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  ArrayList<LinkedHashMap> modes = location.modes
+  state.modes = modes
+  List<String> locationNamePicklist = state.modes.collect{it.name}
+  input(
+    name: 'modesAsScenes',
+    type: 'enum',
+    title: 'Select the Modes',
+    submitOnChange: true,
+    required: false,
+    multiple: true,
+    options: locationNamePicklist
+  )
+  paragraph '<b>Create Custom Room Scene Name</b> <em>..Optional</em>'
+  for (int i = 1; i<9; i++) {
+    input(
+      name: "cust${i}",
+      type: 'text',
+      title: "Custom Name",
+      width: 3,
+      submitOnChange: true,
+      required: false,
+      defaultValue: 'n/a'
+    )
+  }
+  List<String> scenes = (
+    modesAsScenes.findAll{it}
+    + [settings.cust1, settings.cust2, settings.cust3,
+       settings.cust4, settings.cust5, settings.cust6,
+       settings.cust7, settings.cust8].findAll{it && it != 'n/a'}
+  ).sort{}
+  state.scenes = scenes
+}
+
+void addModeIdToSceneToSettings () {
   // Abstract
   //   Ask client to select a scene for each current Hub mode and persist
-  //   the results as "state.modeIdToSceneName" (a Map<String, String>).
+  //   the results as "state.modeIdToScene" (a Map<String, String>).
   //
   // Design Notes
   //   - The mapping facilitates state.currentScene == 'AUTO'
@@ -46,7 +86,6 @@ void addModeIdToRoomScene () {
   }
 }
 
-
 Map monoPage() {
   return dynamicPage(
     name: "monoPage",
@@ -58,11 +97,17 @@ Map monoPage() {
       //--paragraph hubPropertiesAsHtml()
       paragraph heading('Room Scenes') \
         + important('<br/>Tab to register field changes !!!')
-      paragraph emphasis('Step 1: Identify the Hubitat Room this instance controls.')
-      addRoomObjToSettings()
+      addRoomObjToSettings(
+        emphasis('Step 1: Identify the Hubitat Room this instance controls.')
+      )
       if (state.roomObj) {
+        addScenesToSettings (
+          emphasis("Step 2: Identify Room Scenes for ${state.roomObj.name}.")
+        )
+
+        /*
         paragraph emphasis("Step 2: Identify Room Scenes for ${state.roomObj.name}.")
-        paragraph bullet('<b>Step 2a (Optional):</b> Use Hubitat Modes to name Room Scenes.')
+        paragraph '<b>Use Hubitat Modes to name Room Scenes</b> <em>..Optional</em>'
         //].join('')}"""
         // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         // !!! UNKNOWN IMPORT FOR ModeWrapper or ModeWrapperList !!!
@@ -80,7 +125,7 @@ Map monoPage() {
           multiple: true,
           options: locationNamePicklist
         )
-        paragraph bullet('<b>Step 2b (Optional):</b> Create Custom Room Scene Name.')
+        paragraph '<b>Create Custom Room Scene Name</b> <em>..Optional</em>'
         for (int i = 1; i<9; i++) {
           input(
             name: "cust${i}",
@@ -92,21 +137,25 @@ Map monoPage() {
             defaultValue: 'n/a'
           )
         }
+        List<String> scenes = (
+          modesAsScenes.findAll{it}
+          + [settings.cust1, settings.cust2, settings.cust3,
+             settings.cust4, settings.cust5, settings.cust6,
+             settings.cust7, settings.cust8].findAll{it && it != 'n/a'}
+        ).sort{}
+        state.scenes = scenes
+        */
       }
-      List<String> scenes = (
-        modesAsScenes.findAll{it}
-        + [settings.cust1, settings.cust2, settings.cust3,
-           settings.cust4, settings.cust5, settings.cust6,
-           settings.cust7, settings.cust8].findAll{it && it != 'n/a'}
-      ).sort{}
-      paragraph bullet("<b>Scenes:</b> ${scenes.join(', ') ?: '...none...'}")
-      if (scenes.size() < 2) {
+
+
+
+      paragraph bullet("<b>Current Scenes:</b> ${state.scenes.join(', ') ?: '...none...'}")
+      if (state.scenes.size() < 2) {
         paragraph comment('At least two Room Scenes must be defined in order to proceed.')
 
       } else {
-        state.scenes = scenes
         paragraph emphasis('Step 3: For AUTO: Map Hub modes to Room Scenes.')
-        addModeIdToRoomScene()
+        addModeIdToSceneToSettings()
         ////
         //// EXIT
         ////
