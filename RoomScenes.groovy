@@ -20,9 +20,39 @@ preferences {
   page(name: "monoPage", title: "", install: true, uninstall: true)
 }
 
+void addRoomObjToSettings(String heading) {
+  //-----------------------------------------------------------------------
+  // ABSTRACT
+  //   Ask client to select a single room and save the whole room object
+  //   as "state.roomObj". This method must be called from a Hubitat App
+  //   page's section.
+  //
+  // DESIGN NOTES
+  //    There may not be an import for defining a RoomWrapper or a
+  //    RoomWrapperList.
+  //-----------------------------------------------------------------------
+  paragraph emphasis(heading)
+  ArrayList<LinkedHashMap> rooms = app.getRooms()
+  List<Map<String, String>> roomPicklist = rooms
+    .sort{ it.name }
+    .collect{ [(it.id.toString()): it.name] }
+  input(
+    name: 'roomId',
+    type: 'enum',
+    title: 'Select the Room',
+    submitOnChange: true,
+    required: true,
+    multiple: false,
+    options: roomPicklist
+  )
+  if (settings.roomId) {
+    state.roomObj = rooms.find{it.id.toString() == settings.roomId}
+  }
+}
+
 void addScenesToSettings (String heading) {
-  paragraph heading \
-    + '<b>Use Hubitat Modes to name Room Scenes</b> <em>..Optional</em>'
+  paragraph emphasis(heading)
+  paragraph emphasis2('Use Hubitat Modes to name Room Scenes <em>..(optional)</em>')
   // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   // !!! UNKNOWN IMPORT FOR ModeWrapper or ModeWrapperList !!!
   // !!!   Mode appears to have mode.id, mode.name, ...    !!!
@@ -39,7 +69,7 @@ void addScenesToSettings (String heading) {
     multiple: true,
     options: locationNamePicklist
   )
-  paragraph '<b>Create Custom Room Scene Name</b> <em>..Optional</em>'
+  paragraph emphasis2('Create Custom Room Scene Name <em>..(optional)</em>')
   for (int i = 1; i<9; i++) {
     input(
       name: "cust${i}",
@@ -68,7 +98,7 @@ void addModeIdToSceneToSettings (String heading) {
   // Design Notes
   //   - The mapping facilitates state.currentScene == 'AUTO'
   //   - Refresh the mapping if/when site modes are changed.
-  paragraph(heading)
+  paragraph emphasis(heading)
   Map<String, String> modeIdToRoomScene
   ArrayList<LinkedHashMap> modes = location.modes
   Map<String, String> modeIdToScene = [:]
@@ -100,27 +130,71 @@ Map monoPage() {
     uninstall: true
   ) {
     section {
-      paragraph heading('Room Scenes') \
-        + important('<br/>Tab to register field changes !!!')
-      addRoomObjToSettings(
-        emphasis('Step 1: Identify the Hubitat Room this instance controls.')
-      )
+      app.updateLabel("${state.roomObj.name ?: 'TBD'} Room Scenes Instance")
+      // paragraph heading("${state.roomObj.name ?: 'TBD'} Room Scenes Instance") \
+      paragraph important('<br/>Tab to register field changes!')
+      addRoomObjToSettings('<b>Step 1:</b> Identify the Hubitat Room this instance controls')
       if (state.roomObj) {
-        addScenesToSettings (
-          emphasis("Step 2: Identify Room Scenes for ${state.roomObj.name}.")
-        )
+        addScenesToSettings ("<b>Step 2:</b> Identify <b>${state.roomObj.name}</b> Room Scenes")
       }
-      paragraph bullet("<b>Current Scenes:</b> ${state.scenes.join(', ') ?: '...none...'}")
+      paragraph "<b>Current Scenes:</b> ${state.scenes.join(', ') ?: '...none...'}"
       if (state.scenes.size() < 2) {
         paragraph comment('At least two Room Scenes must be defined in order to proceed.')
       } else {
-        addModeIdToSceneToSettings(
-          emphasis('Step 3: Map Hub modes to Room Scenes for automation.')
-        )
+        addModeIdToSceneToSettings("<b>Step 3:</b> Map Hub modes to ${state.roomObj.name} Scenes (for automation)")
       }
       if (state.modeIdToScene) {
-        paragraph "state.modeIdToScene: ${state.modeIdToScene}"
+        //--paragraph "state.modeIdToScene: ${state.modeIdToScene}"
         // READY TO IDENTIFY DEVICES
+        paragraph emphasis("<b>Step 4:</b> Identify Devices for ${state.roomObj.name}")
+        paragraph emphasis2('Identify Lutron AND <b>Non-Lutron</b>, <b>Non-VSW</b> Devices')
+        input (
+          name: 'nonLutronDevices',
+          type: 'capability.switch',             // Enums in the future
+          title: 'Select Non-Lutron Switches',
+          submitOnChange: true,
+          required: true,
+          multiple: true
+        )
+        paragraph emphasis2('Identify <b>Lutron</b>, <b>Non-VSW</b> Devices')
+        input (
+          name: 'lutronRepeaters',
+          type: 'device.LutronKeypad',           // Enums in the future
+          title: 'Select Lutron Main Repeaters',
+          submitOnChange: true,
+          required: true,
+          multiple: true
+        )
+      }
+      if (settings.nonLutronDevices && settings.lutronRepeaters) {
+        paragraph emphasis("<b>Step 5:</b> Configure Scenes for ${state.roomObj.name}")
+        state.scenes.each{scene ->
+          paragraph emphasis2("SCENE: ${scene}")
+          settings.nonLutronDevices.each{device ->
+            input(
+              name: "${scene}.${device.id}",
+              type: 'number',
+              title: "<b>${device.displayName}</b><br/>Level 0..100",
+              width: 2,
+              submitOnChange: true,
+              required: true,
+              multiple: false,
+              defaultValue: 0
+            )
+          }
+          settings.lutronRepeaters.each{device ->
+            input(
+              name: "${scene}.${device.id}",
+              type: 'number',
+              title: "<b>${device.displayName}</b><br/>Button #",
+              width: 2,
+              submitOnChange: true,
+              required: true,
+              multiple: false,
+              defaultValue: 0
+            )
+          }
+        }
       }
       ////
       //// EXIT
