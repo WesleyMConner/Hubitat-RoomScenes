@@ -130,7 +130,7 @@ Map monoPage() {
     uninstall: true
   ) {
     section {
-      app.updateLabel("${state.roomObj.name ?: 'TBD'} Room Scenes Instance")
+      app.updateLabel("${state?.roomObj?.name ?: 'TBD'} Room Scenes Instance")
       // paragraph heading("${state.roomObj.name ?: 'TBD'} Room Scenes Instance") \
       paragraph important('<br/>Tab to register field changes!')
       addRoomObjToSettings('<b>Step 1:</b> Identify the Hubitat Room this instance controls')
@@ -138,11 +138,11 @@ Map monoPage() {
         addScenesToSettings ("<b>Step 2:</b> Identify <b>${state.roomObj.name}</b> Room Scenes")
       }
       paragraph "<b>Current Scenes:</b> ${state.scenes.join(', ') ?: '...none...'}"
-      if (state.scenes.size() < 2) {
-        paragraph comment('At least two Room Scenes must be defined in order to proceed.')
-      } else {
+      //---->if (state.scenes.size() < 2) {
+      //---->  paragraph comment('At least two Room Scenes must be defined in order to proceed.')
+      //---->} else {
         addModeIdToSceneToSettings("<b>Step 3:</b> Map Hub modes to ${state.roomObj.name} Scenes (for automation)")
-      }
+      //---->}
       if (state.modeIdToScene) {
         //--paragraph "state.modeIdToScene: ${state.modeIdToScene}"
         // READY TO IDENTIFY DEVICES
